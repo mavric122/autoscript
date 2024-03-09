@@ -3,6 +3,12 @@
 nekoray_status_install=false
 yande_browser_status_install=false
 
+# Проверка и установка пакета dialog
+if ! command -v dialog &> /dev/null
+then
+    sudo apt install dialog --yes
+fi
+
 nekoray_install () {
   echo "Скачиваю nekoray"
   wget -O nekoray.zip https://github.com/MatsuriDayo/nekoray/releases/download/3.26/nekoray-3.26-2023-12-09-linux64.zip || { echo "Ошибка при скачивании nekoray" ; return 1; }
@@ -11,7 +17,7 @@ nekoray_install () {
   wget https://github.com/mavric122/autoscript/raw/main/Пароль.txt || { echo "Ошибка при скачивании пароля"; }
   sudo apt install gnome-terminal --yes || { echo "Системная ошибка 1"; }
   gnome-terminal -- bash -c "openssl enc -d -aes-256-cbc -in Пароль.txt -pbkdf2; read -p 'Нажмите Enter для продолжения...'"
-  sudo chmod -R 777 nekoray/ | { echo "Не выданы права nekoray"; }
+  sudo chmod -R 777 nekoray/ || { echo "Не выданы права nekoray"; }
   nekoray_status_install=true
   echo "nekoray установлен"
 }
@@ -25,8 +31,60 @@ yandex_browser_install () {
   echo "Yandex browser установлен"
 }
 
-nekoray_install
-yandex_browser_install
+# Отображение диалогового окна выбора
+menu() {
+    CHOICE=$(dialog --clear --title "Выберите опцию" --menu "Выберите один из вариантов:" 15 40 3 \
+            1 "Установить всё" \
+            2 "Установить Nekoray" \
+            3 "Установить Yandex browser" \
+            2>&1 >/dev/tty)
 
+    # Проверка выбора пользователя и выполнение соответствующих действий
+    case $CHOICE in
+            1)
+                clear
+                nekoray_install
+                yandex_browser_install
+                echo "---------------------------------------------------"
+                echo "ОТЧЁТ:"
+                if [ "$nekoray_status_install" ]
+                then
+                  echo "++++++++ Nekoray успешно установлен ++++++++++"
+                else
+                  echo "-------- Nekoray ошибка --------"
+                fi
+
+                if [ "$yande_browser_status_install" ]
+                then
+                  echo "++++++++ Yandex browser успешно установлен ++++++++++"
+                else
+                  echo "-------- Yandex browser ошибка --------"
+                fi
+
+                ;;
+            2)
+                clear
+                nekoray_install
+                if [ "$nekoray_status_install" ]
+                then
+                  echo "++++++++ Nekoray успешно установлен ++++++++++"
+                else
+                  echo "-------- Nekoray ошибка --------"
+                fi
+                ;;
+            3)
+                clear
+                yandex_browser_install
+                if [ "$yande_browser_status_install" ]
+                then
+                  echo "++++++++ Yandex browser успешно установлен ++++++++++"
+                else
+                  echo "-------- Yandex browser ошибка --------"
+                fi
+                ;;
+    esac
+}
+
+menu
 
 
