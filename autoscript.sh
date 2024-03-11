@@ -3,6 +3,7 @@
 nekoray_status_install=false
 yande_browser_status_install=false
 obsidian_status_install=false
+google_chrome_install=false
 
 # Проверка и установка пакета dialog
 if ! command -v dialog &> /dev/null
@@ -39,6 +40,14 @@ report () {
                       echo "++++++++ Obsidian успешно установлен ++++++++++"
                     else
                       echo "-------- Obsidian ошибка --------"
+                    fi
+                    ;;
+          "google_chrome")
+                    if [ google_chrome_install = true ]
+                    then
+                      echo "++++++++ Google-Chrome успешно установлен ++++++++++"
+                    else
+                      echo "-------- Google-Chrome ошибка --------"
                     fi
                     ;;
   esac
@@ -78,13 +87,27 @@ obsidian_install () {
   echo "Obsidian установлен"
 }
 
+google_chrome_install () {
+  echo "Скачиваю Google-Chrome"
+  wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add - || { echo "Ошибка при скачивании пакета Google-Chrome" ; return 1 ; }
+  sudo sh -c 'echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' || { echo "Ошибка при добавлении пакета Google-Chrome" ; return 1 ; }
+  sudo apt update
+  sudo apt-get install google-chrome-stable || { echo "Ошибка при установке Google-Chrome" ; return 1; } #Ошибка тут.
+  google_chrome_install=true
+  echo "Google-Chrome установлен"
+}
+
+
+
 # Отображение диалогового окна выбора
 menu() {
     CHOICE=$(dialog --clear --title "Выберите опцию" --menu "Выберите один из вариантов:" 15 40 3 \
             1 "Установить всё" \
-            2 "Установить Nekoray" \
-            3 "Установить Yandex browser" \
-            4 "Установить Obsidian" \
+            2 "Основной блок (Мультимедия и интернет" \
+            3 "Установить Nekoray" \
+            4 "Установить Yandex browser" \
+            5 "Установить Obsidian" \
+            6 "Установить Google-Chrome" \
             2>&1 >/dev/tty)
 
     # Проверка выбора пользователя и выполнение соответствующих действий
@@ -108,20 +131,39 @@ menu() {
             2)
                 clear
                 nekoray_install
+                yandex_browser_install
+                echo "---------------------------------------------------"
+                echo "ОТЧЁТ:"
                 program="nekoray"
+                report "$program"
+
+                program="yandex"
                 report "$program"
                 ;;
             3)
+                clear
+                nekoray_install
+                program="nekoray"
+                report "$program"
+                ;;
+            4)
                 clear
                 yandex_browser_install
                 program="yandex"
                 report "$program"
                 ;;
-            4)
+            5)
                 clear
                 obsidian_install
                 program="obsidian"
                 report "$program"
+                ;;
+            6)
+                clear
+                google_chrome_install
+                program="google_chrome"
+                report "$program"
+                ;;
     esac
 }
 
