@@ -9,6 +9,33 @@ then
     sudo apt install dialog --yes
 fi
 
+# Функция описывающая в конце скрипта удачу/неудачу
+report () {
+  local prog="$1"
+  case $prog in
+          "nekoray")
+
+                      if [ "$nekoray_status_install" = true ]
+                      then
+                        echo "++++++++ Nekoray успешно установлен ++++++++++"
+                      else
+                        echo "-------- Nekoray ошибка --------"
+                      fi
+                      ;;
+          "yandex")
+
+                    if [ "$yande_browser_status_install" = true ]
+                    then
+                      echo "++++++++ Yandex browser успешно установлен ++++++++++"
+                    else
+                      echo "-------- Yandex browser ошибка --------"
+                    fi
+                    ;;
+  esac
+}
+
+
+
 nekoray_install () {
   echo "Скачиваю nekoray"
   wget -O nekoray.zip https://github.com/MatsuriDayo/nekoray/releases/download/3.26/nekoray-3.26-2023-12-09-linux64.zip || { echo "Ошибка при скачивании nekoray" ; return 1; }
@@ -23,13 +50,15 @@ nekoray_install () {
 }
 yandex_browser_install () {
   echo "Начинаю установку Yandex browser"
-  sudo add-apt-repository --yes 'deb https://repo.yandex.ru/yandex-browser/deb beta main' || { echo "Ошибка при скачивании Yandex browser" ; return 1; }
-  sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 60B9CD3A083A7A9A || { echo "Ошибка при добавлении ключа GPG" ; return 1; }
+  sudo add-apt-repository --yes 'deb https://repo.yandex.ru/yandex-browser/deb beta main' || { echo "Ошибка при скачивании Yandex browser" ; return 1 ; }
+  sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 60B9CD3A083A7A9A || { echo "Ошибка при добавлении ключа GPG" ; return 1 ; }
   sudo apt update || { echo "Ошибка при добавлении репозитория" ; return 1; }
-  sudo apt install yandex-browser-beta -y|| { echo "Ошибка при установке Yandex browser" ; return 1; }
+  sudo apt install yandex-browser-beta -y || { echo "Ошибка при установке Yandex browser" ; return 1 ; }
   yande_browser_status_install=true
   echo "Yandex browser установлен"
 }
+
+obsidian
 
 # Отображение диалогового окна выбора
 menu() {
@@ -47,40 +76,23 @@ menu() {
                 yandex_browser_install
                 echo "---------------------------------------------------"
                 echo "ОТЧЁТ:"
-                if [ "$nekoray_status_install" ]
-                then
-                  echo "++++++++ Nekoray успешно установлен ++++++++++"
-                else
-                  echo "-------- Nekoray ошибка --------"
-                fi
+                program="nekoray"
+                report "$program"
 
-                if [ "$yande_browser_status_install" ]
-                then
-                  echo "++++++++ Yandex browser успешно установлен ++++++++++"
-                else
-                  echo "-------- Yandex browser ошибка --------"
-                fi
-
+                program="yandex"
+                report "$program"
                 ;;
             2)
                 clear
                 nekoray_install
-                if [ "$nekoray_status_install" ]
-                then
-                  echo "++++++++ Nekoray успешно установлен ++++++++++"
-                else
-                  echo "-------- Nekoray ошибка --------"
-                fi
+                program="nekoray"
+                report "$program"
                 ;;
             3)
                 clear
                 yandex_browser_install
-                if [ "$yande_browser_status_install" ]
-                then
-                  echo "++++++++ Yandex browser успешно установлен ++++++++++"
-                else
-                  echo "-------- Yandex browser ошибка --------"
-                fi
+                program="yandex"
+                report "$program"
                 ;;
     esac
 }
