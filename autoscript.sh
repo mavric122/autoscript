@@ -2,6 +2,7 @@
 
 nekoray_status_install=false
 yande_browser_status_install=false
+obsidian_status_install=false
 
 # Проверка и установка пакета dialog
 if ! command -v dialog &> /dev/null
@@ -31,10 +32,19 @@ report () {
                       echo "-------- Yandex browser ошибка --------"
                     fi
                     ;;
+          "obsidian")
+
+                    if [ "$obsidian_status_install" = true ]
+                    then
+                      echo "++++++++ Obsidian успешно установлен ++++++++++"
+                    else
+                      echo "-------- Obsidian ошибка --------"
+                    fi
+                    ;;
   esac
 }
 
-
+# Блок с программами
 
 nekoray_install () {
   echo "Скачиваю nekoray"
@@ -48,6 +58,7 @@ nekoray_install () {
   nekoray_status_install=true
   echo "nekoray установлен"
 }
+
 yandex_browser_install () {
   echo "Начинаю установку Yandex browser"
   sudo add-apt-repository --yes 'deb https://repo.yandex.ru/yandex-browser/deb beta main' || { echo "Ошибка при скачивании Yandex browser" ; return 1 ; }
@@ -58,7 +69,14 @@ yandex_browser_install () {
   echo "Yandex browser установлен"
 }
 
-obsidian
+obsidian_install () {
+  echo "Скачиваю Obsidian"
+  wget -O Obsidian.deb https://github.com/obsidianmd/obsidian-releases/releases/download/v1.5.8/obsidian_1.5.8_amd64.deb || { echo "Ошибка при скачивании Obsidian" ; return 1; }
+  sudo dpkg -i Obsidian.deb || { echo "Ошибка при установке Obsidian.deb" ; return 1 ; }
+  sudo rm Obsidian.deb || { echo "Ошибка при удалении Obsidian.deb" ; return 1; }
+  obsidian_status_install=true
+  echo "Obsidian установлен"
+}
 
 # Отображение диалогового окна выбора
 menu() {
@@ -66,6 +84,7 @@ menu() {
             1 "Установить всё" \
             2 "Установить Nekoray" \
             3 "Установить Yandex browser" \
+            4 "Установить Obsidian" \
             2>&1 >/dev/tty)
 
     # Проверка выбора пользователя и выполнение соответствующих действий
@@ -74,12 +93,16 @@ menu() {
                 clear
                 nekoray_install
                 yandex_browser_install
+                obsidian_install
                 echo "---------------------------------------------------"
                 echo "ОТЧЁТ:"
                 program="nekoray"
                 report "$program"
 
                 program="yandex"
+                report "$program"
+
+                program="obsidian"
                 report "$program"
                 ;;
             2)
@@ -94,6 +117,11 @@ menu() {
                 program="yandex"
                 report "$program"
                 ;;
+            4)
+                clear
+                obsidian_install
+                program="obsidian"
+                report "$program"
     esac
 }
 
