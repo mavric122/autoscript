@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#Проверка Push
+
 nekoray_status_install=false
 yande_browser_status_install=false
 obsidian_status_install=false
