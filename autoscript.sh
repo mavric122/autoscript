@@ -1,13 +1,12 @@
 #!/bin/bash
 
-#Проверка Push
-
 nekoray_status_install=false
 yande_browser_status_install=false
 obsidian_status_install=false
 google_chrome_status_install=false
 smplayer_status_install=false
 syncthing_status_install=false
+virtualbox_status_install=false
 
 # Проверка и установка пакета dialog
 if ! command -v dialog &> /dev/null
@@ -15,7 +14,7 @@ then
     sudo apt install dialog --yes
 fi
 
-# Функция описывающая в конце скрипта удачу/неудачу
+# Функция описывающая в конце скрипта удачу/неудачу установки
 report () {
   local prog="$1"
   case $prog in
@@ -29,7 +28,6 @@ report () {
                       fi
                       ;;
           "yandex")
-true
                     if [ "$yande_browser_status_install" = true ]
                     then
                       echo "++++++++ Yandex browser успешно установлен ++++++++++"
@@ -69,6 +67,14 @@ true
                       echo "++++++++ Syncthing успешно установлен ++++++++++"
                     else
                       echo "-------- Syncthing ошибка --------"
+                    fi
+                    ;;
+          "virtualbox")
+                    if [ "$virtualbox_status_install" = true ]
+                    then
+                      echo "++++++++ VirtialBox успешно установлен ++++++++++"
+                    else
+                      echo "-------- VirtialBox ошибка --------"
                     fi
                     ;;
           *)
@@ -133,8 +139,11 @@ smplayer_install () {
 
 syncthing_install () {
   echo "Начинаю установку Syncthing"
-  sudo apt-get update
-  sudo apt-get install curl --yes || { echo "Ошибка при установке Curl" ; return 1; }
+  if ! command -v curl &>/dev/null; then # Проверка на наличие curl в системе
+    sudo apt-get update
+    sudo apt-get install curl --yes || { echo "Ошибка при установке Curl" ; return 1; }
+    echo "Установка curl прошла успешно!"
+  fi
   sudo mkdir -p /etc/apt/keyrings
   sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg || { echo "Ошибка при добавлении ключа PGR" ; return 1 ; }
   # Add the "stable" channel to your APT sources:
@@ -142,6 +151,15 @@ syncthing_install () {
   sudo apt-get update || { echo "Ошибка при обновлении репозитория" ; return 1; }
   sudo apt-get install syncthing || { echo "Ошибка при установке Syncthing" ; return 1; }
   syncthing_status_install=true
+}
+
+virtualbox_install () {
+  echo "Начинаю установку VirtualBox"
+  wget -O virtualbox.deb https://download.virtualbox.org/virtualbox/7.0.14/virtualbox-7.0_7.0.14-161095~Ubuntu~jammy_amd64.deb || { echo "Ошибка при скачивании VirtualBox!" ; return 1 ; }
+  sudo dpkg -i virtualbox.deb || { echo "Ошибка при установке virtualbox"; return 1 ; }
+  sudo apt-get install -f -y || { echo "Ошибка при установке зависимостей"; return 1 ; }
+  echo "Установка VirtualBox прошла успешно"
+  virtualbox_status_install=true
 }
 
 
@@ -157,6 +175,7 @@ menu() {
             6 "Установить Google-Chrome" \
             7 "Установить Smplayer" \
             8 "Установить Syncthing" \
+            9 "Установить VirtualBox" \
             2>&1 >/dev/tty)
 
     # Проверка выбора пользователя и выполнение соответствующих действий
@@ -242,6 +261,11 @@ menu() {
                 program="syncthing"
                 report "$program"
                 ;;
+            9)
+                clear
+                virtualbox_install
+                program="virtualbox"
+                report "$program"
     esac
 }
 
