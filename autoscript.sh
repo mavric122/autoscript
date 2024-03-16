@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Проверка на sudo
+if [[ $EUID -ne 0 ]]; then
+   echo "Этот скрипт должен быть запущен с правами администратора"
+   exit 1
+fi
+
 nekoray_status_install=false
 yande_browser_status_install=false
 obsidian_status_install=false
@@ -7,6 +13,10 @@ google_chrome_status_install=false
 smplayer_status_install=false
 syncthing_status_install=false
 virtualbox_status_install=false
+vscode_status_install=false
+anydesk_status_install=false
+telegram_status_install=false
+grub_customizer_status_install=false
 
 # Проверка и установка пакета dialog
 if ! command -v dialog &> /dev/null
@@ -77,6 +87,38 @@ report () {
                       echo "-------- VirtialBox ошибка --------"
                     fi
                     ;;
+          "vscode")
+                    if [ "$vscode_status_install" = true ]
+                    then
+                      echo "++++++++ VScode успешно установлен ++++++++++"
+                    else
+                      echo "-------- VScode ошибка --------"
+                    fi
+                    ;;
+          "anydesk")
+                    if [ "$anydesk_status_install" = true ]
+                    then
+                      echo "++++++++ Anydesk успешно установлен ++++++++++"
+                    else
+                      echo "-------- Anydesk ошибка --------"
+                    fi
+                    ;;
+          "telegram")
+                    if [ "$telegram_status_install" = true ]
+                    then
+                      echo "++++++++ Telegram успешно установлен ++++++++++"
+                    else
+                      echo "-------- Telegram ошибка --------"
+                    fi
+                    ;;
+          "grub_customizer")
+                    if [ "$grub_customizer_status_install" = true ]
+                    then
+                      echo "++++++++ Grub-customizer успешно установлен ++++++++++"
+                    else
+                      echo "-------- Grub-customizer ошибка --------"
+                    fi
+                    ;;
           *)
                     echo "Ошибка: неизвестный статус для $prog"
                     ;;
@@ -104,7 +146,7 @@ yandex_browser_install () {
   sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 60B9CD3A083A7A9A || { echo "Ошибка при добавлении ключа GPG" ; return 1 ; }
   sudo apt update || { echo "Ошибка при обновлении репозитория" ; return 1; }
   sudo apt install yandex-browser-beta -y || { echo "Ошибка при установке Yandex browser" ; return 1 ; }
-  yande_browser_status_install=trueGoogle-Chrome
+  yande_browser_status_install=true
   echo "Yandex browser установлен"
 }
 
@@ -139,27 +181,94 @@ smplayer_install () {
 
 syncthing_install () {
   echo "Начинаю установку Syncthing"
-  if ! command -v curl &>/dev/null; then # Проверка на наличие curl в системе
+  # Проверка на наличие curl в системе и его установка при отсутствии
+  if ! command -v curl &>/dev/null; then
     sudo apt-get update
-    sudo apt-get install curl --yes || { echo "Ошибка при установке Curl" ; return 1; }
+    sudo apt-get install curl --yes || { echo "Ошибка при установке Curl"; return 1; }
     echo "Установка curl прошла успешно!"
   fi
+
+
+  # Создание директории для ключей, если она еще не создана
   sudo mkdir -p /etc/apt/keyrings
-  sudo curl -L -o /etc/apt/keyrings/syncthing-archive-keyring.gpg https://syncthing.net/release-key.gpg || { echo "Ошибка при добавлении ключа PGR" ; return 1 ; }
-  # Add the "stable" channel to your APT sources:
-  echo "deb [signed-by=/etc/apt/keyrings/syncthing-archive-keyring.gpg] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list || { echo "Ошибка при добавлении репозитория" ; return 1; }
-  sudo apt-get update || { echo "Ошибка при обновлении репозитория" ; return 1; }
-  sudo apt-get install syncthing || { echo "Ошибка при установке Syncthing" ; return 1; }
+
+  # Путь к файлу с ключом
+  KEYRING_PATH="/usr/share/keyrings/syncthing-archive-keyring.gpg"
+  # URL ключа
+  KEY_URL="https://syncthing.net/release-key.gpg"
+  
+  if [ ! -f "$KEYRING_PATH" ]; then
+    echo "Ключ PGP не найден. Добавляем ключ."
+    if ! sudo wget -qO - "$KEY_URL" | gpg --dearmor | sudo tee "$KEYRING_PATH" > /dev/null; then
+      echo "Ошибка при добавлении ключа PGP."
+      return 1
+    fi
+    echo "Ключ PGP успешно добавлен."
+  else
+    echo "Ключ PGP уже добавлен."
+  fi
+
+  # Добавление репозитория Syncthing
+  echo "deb [signed-by=$KEYRING_PATH] https://apt.syncthing.net/ syncthing stable" | sudo tee /etc/apt/sources.list.d/syncthing.list > /dev/null || { echo "Ошибка при добавлении репозитория"; return 1; }
+
+  # Обновление репозиториев и установка Syncthing
+  sudo apt-get update || { echo "Ошибка при обновлении репозитория"; return 1; }
+  sudo apt-get install syncthing --yes || { echo "Ошибка при установке Syncthing"; return 1; }
+
+  echo "Syncthing установлен."
   syncthing_status_install=true
 }
 
 virtualbox_install () {
   echo "Начинаю установку VirtualBox"
   wget -O virtualbox.deb https://download.virtualbox.org/virtualbox/7.0.14/virtualbox-7.0_7.0.14-161095~Ubuntu~jammy_amd64.deb || { echo "Ошибка при скачивании VirtualBox!" ; return 1 ; }
-  sudo dpkg -i virtualbox.deb || { echo "Ошибка при установке virtualbox"; return 1 ; }
-  sudo apt-get install -f -y || { echo "Ошибка при установке зависимостей"; return 1 ; }
+  sudo dpkg -i virtualbox.deb || { echo "Ошибка при установке virtualbox"; sudo apt-get -f install -y || { echo "Ошибка при установке зависимостей"; return 1 ; }; }
   echo "Установка VirtualBox прошла успешно"
   virtualbox_status_install=true
+}
+
+vscode_install () {
+  # Проверка на наличие curl в системе и его установка при отсутствии
+  if ! command -v curl &>/dev/null; then
+    sudo apt-get update
+    sudo apt-get install curl --yes || { echo "Ошибка при установке Curl"; return 1; }
+    echo "Установка curl прошла успешно!"
+  fi
+
+  key="https://packages.microsoft.com/keys/microsoft.asc"
+  repository="deb [arch=amd64 signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main"
+  echo "Начинаю установку VScode"
+  curl -sSL "$key" | gpg --dearmor | sudo tee /usr/share/keyrings/packages.microsoft.gpg >/dev/null || { echo "Ошибка при скачивании ключа GPG" ; return 1 ; }
+  echo "$repository" | sudo tee /etc/apt/sources.list.d/vscode.list || { echo "Ошибка при добавлении репозитория" ; return 1; }
+  sudo apt-get update
+  sudo apt-get install code || { echo "Ошибка при установке VScode" ; return 1 ; }
+  echo "Установка VScode прошла успешно"
+  vscode_status_install=true
+}
+
+anydesk_install () {
+  wget -qO - https://keys.anydesk.com/repos/DEB-GPG-KEY | sudo apt-key add - || { echo "Ошибка при добавлении ключа"; return 1; }
+  echo "deb http://deb.anydesk.com/ all main" | sudo tee /etc/apt/sources.list.d/anydesk-stable.list || { echo "Ошибка при добавлении репозитория"; return 1; }
+  sudo apt-get update
+  sudo apt-get install anydesk --yes || { echo "Ошибка при установке Anydesk"; return 1; }
+  anydesk_status_install=true
+  echo "Anydesk установлен"
+}
+
+telegram_install () {
+  sudo add-apt-repository ppa:atareao/telegram --yes || { echo "Ошибка при добавлении репозитория" ; return 1 ; }
+  sudo apt update || { echo "Ошибка при обновления репозиториев" ; return 1 ; }
+  sudo apt install telegram || { echo "Ошибка при установке Telegram" ; return 1 ; }
+  telegram_status_install=true
+  echo "Telegram установлен"
+}
+
+grub_customizer_install () {
+  sudo add-apt-repository ppa:danielrichter2007/grub-customizer -y || { echo "Ошибка при добавлении репозитория Grub-customizer" ; return 1 ; }
+  sudo apt update || { echo "Ошибка при обновления репозиториев" ; return 1 ; }
+  sudo apt install grub-customizer || { echo "Ошибка при установке Grub-customizer" ; return 1 ; }
+  grub_customizer_status_install=true
+  echo "Grub-customizer установлен"
 }
 
 
@@ -176,6 +285,10 @@ menu() {
             7 "Установить Smplayer" \
             8 "Установить Syncthing" \
             9 "Установить VirtualBox" \
+            10 "Установить VScode" \
+            11 "Установить Anydesk" \
+            12 "Установить Telegram" \
+            13 "Установить Grub-customizer"
             2>&1 >/dev/tty)
 
     # Проверка выбора пользователя и выполнение соответствующих действий
@@ -188,6 +301,11 @@ menu() {
                 google_chrome_install
                 smplayer_install
                 syncthing_install
+                virtualbox_install
+                vscode_install
+                anydesk_install
+                telegram_install
+                grub_customizer_install
                 echo "---------------------------------------------------"
                 echo "ОТЧЁТ:"
                 program="nekoray"
@@ -207,12 +325,29 @@ menu() {
 
                 program="syncthing"
                 report "$program"
+
+                program="virtualbox"
+                report "$program"
+
+                program="vscode"
+                report "$program"
+
+                program="anydesk"
+                report "$program"
+
+                program="telegram"
+                report "$program"
+
+                program="grub_customizer"
+                report "$program"
                 ;;
             2)
                 clear
                 nekoray_install
                 yandex_browser_install
                 smplayer_install
+                google_chrome_install
+                anydesk_install
                 echo "---------------------------------------------------"
                 echo "ОТЧЁТ:"
                 program="nekoray"
@@ -222,6 +357,12 @@ menu() {
                 report "$program"
 
                 program="smplayer"
+                report "$program"
+
+                program="google_chrome"
+                report "$program"
+
+                program="anydesk"
                 report "$program"
                 ;;
             3)
@@ -265,6 +406,30 @@ menu() {
                 clear
                 virtualbox_install
                 program="virtualbox"
+                report "$program"
+                ;;
+            10)
+                clear
+                vscode_install
+                program="vscode"
+                report "$program"
+                ;;
+            11)
+                clear
+                anydesk_install
+                program="anydesk"
+                report "$program"
+                ;;
+            12)
+                clear
+                telegram_install
+                program="telegram"
+                report "$program"
+                ;;
+            13)
+                clear
+                grub_customizer_install
+                program="grub_customizer"
                 report "$program"
     esac
 }
