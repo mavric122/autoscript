@@ -6,6 +6,9 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+sudo apt update -y
+sudo apt upgrade -y
+
 nekoray_status_install=false
 yande_browser_status_install=false
 obsidian_status_install=false
@@ -17,6 +20,8 @@ vscode_status_install=false
 anydesk_status_install=false
 telegram_status_install=false
 grub_customizer_status_install=false
+steam_status_install=false
+localtime_status_install=false
 
 # Проверка и установка пакета dialog
 if ! command -v dialog &> /dev/null
@@ -119,6 +124,22 @@ report () {
                       echo "-------- Grub-customizer ошибка --------"
                     fi
                     ;;
+          "steam")
+                    if [ "$steam_status_install" = true ]
+                    then
+                      echo "++++++++ STEAM успешно установлен ++++++++++"
+                    else
+                      echo "-------- STEAM ошибка --------"
+                    fi
+                    ;;
+          "localtime")
+                    if [ "$localtime_status_install" = true ]
+                    then
+                      echo "++++++++ Синхронизация времени между Windows/Linux успешно установлен ++++++++++"
+                    else
+                      echo "-------- Синхронизация времени между Windows/Linux ошибка --------"
+                    fi
+                    ;;
           *)
                     echo "Ошибка: неизвестный статус для $prog"
                     ;;
@@ -141,13 +162,17 @@ nekoray_install () {
 }
 
 yandex_browser_install () {
+  repository_yandex_1="yandex-browser-beta.list"
+  repository_yandex_2="yandex-browser-beta.list.save"
+  text_repository="deb [arch=amd64] https://repo.yandex.ru/yandex-browser/deb beta main"
   echo "Начинаю установку Yandex browser"
-  sudo add-apt-repository --yes 'deb https://repo.yandex.ru/yandex-browser/deb beta main' || { echo "Ошибка при скачивании Yandex browser" ; return 1 ; }
-  sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 60B9CD3A083A7A9A || { echo "Ошибка при добавлении ключа GPG" ; return 1 ; }
-  sudo apt update || { echo "Ошибка при обновлении репозитория" ; return 1; }
+  echo "$text_repository" | sudo tee /etc/apt/sources.list.d/"$repository_yandex_1" || { echo "Ошибка при добавлении репозитория" ; return 1 ; }
+  echo "$text_repository" | sudo tee /etc/apt/sources.list.d/"$repository_yandex_2" || { echo "Ошибка при добавлении репозитория_2" ; return 1 ; }
+  sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 60B9CD3A083A7A9A || { echo "Ошибка при добавлении ключа GPG" ; return 1 ;}
+  sudo apt update || { echo "Ошибка при обновлении репозитория" ; return 1 ; }
   sudo apt install yandex-browser-beta -y || { echo "Ошибка при установке Yandex browser" ; return 1 ; }
   yande_browser_status_install=true
-  echo "Yandex browser установлен"
+  echo "Yandex browser успешно установлен"
 }
 
 obsidian_install () {
@@ -266,16 +291,37 @@ telegram_install () {
 grub_customizer_install () {
   sudo add-apt-repository ppa:danielrichter2007/grub-customizer -y || { echo "Ошибка при добавлении репозитория Grub-customizer" ; return 1 ; }
   sudo apt update || { echo "Ошибка при обновления репозиториев" ; return 1 ; }
-  sudo apt install grub-customizer || { echo "Ошибка при установке Grub-customizer" ; return 1 ; }
+  sudo apt install grub-customizer -y || { echo "Ошибка при установке Grub-customizer" ; return 1 ; }
   grub_customizer_status_install=true
   echo "Grub-customizer установлен"
+}
+
+steam_install () {
+  # Проверка на наличие репозитория
+  REPO_URL_PART="multiverse"
+  if ! grep -r "^deb .*${REPO_URL_PART}" /etc/apt/sources.list /etc/apt/sources.list.d/ > /dev/null; then
+    sudo add-apt-repository multiverse -y || { echo "Ошибка при добавлении репозитория" ; return 1; }
+  fi
+  sudo apt update || { echo "Ошибка при обновления репозиториев" ; return 1; }
+  sudo apt install steam -y || { echo "Ошибка при установке Steam" ; return 1; }
+  steam_status_install=true
+  echo "Steam установлен"
+}
+
+edit_localtime () {
+  now_time=$(timedatectl)
+  sudo timedatectl set-local-rtc 1 --adjust-system-clock
+  sudo timedatectl set-ntp true
+  localtime_status_install=true
+  echo "Выполнена настройка времени"
+  echo "Текущее время $now_time"
 }
 
 
 
 # Отображение диалогового окна выбора
 menu() {
-    CHOICE=$(dialog --clear --title "Выберите опцию" --menu "Выберите один из вариантов:" 20 60 3 \
+    CHOICE=$(dialog --clear --title "Выберите опцию" --menu "Выберите один из вариантов:" 23 60 3 \
             1 "Установить всё" \
             2 "Основной блок (Мультимедия и интернет" \
             3 "Установить Nekoray" \
@@ -288,7 +334,9 @@ menu() {
             10 "Установить VScode" \
             11 "Установить Anydesk" \
             12 "Установить Telegram" \
-            13 "Установить Grub-customizer"
+            13 "Установить Grub-customizer" \
+            14 "Установить Steam" \
+            15 "Устанивить синхронизацию времени Windows/Linux" \
             2>&1 >/dev/tty)
 
     # Проверка выбора пользователя и выполнение соответствующих действий
@@ -306,6 +354,7 @@ menu() {
                 anydesk_install
                 telegram_install
                 grub_customizer_install
+                steam_install
                 echo "---------------------------------------------------"
                 echo "ОТЧЁТ:"
                 program="nekoray"
@@ -339,6 +388,9 @@ menu() {
                 report "$program"
 
                 program="grub_customizer"
+                report "$program"
+
+                program="steam"
                 report "$program"
                 ;;
             2)
@@ -431,9 +483,19 @@ menu() {
                 grub_customizer_install
                 program="grub_customizer"
                 report "$program"
+                ;;
+            14)
+                clear
+                steam_install
+                program="steam"
+                report="$program"
+                ;;
+            15) 
+                clear
+                edit_localtime
+                program="localtime"
+                report="$program"
     esac
 }
 
 menu
-
-
