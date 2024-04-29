@@ -344,7 +344,7 @@ menu() {
             1)
                 clear
                 nekoray_install
-                yandex_browser_install
+                #yandex_browser_install
                 obsidian_install
                 google_chrome_install
                 smplayer_install
@@ -360,8 +360,8 @@ menu() {
                 program="nekoray"
                 report "$program"
 
-                program="yandex"
-                report "$program"
+                #program="yandex"
+                #report "$program"
 
                 program="obsidian"
                 report "$program"
